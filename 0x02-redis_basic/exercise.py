@@ -10,6 +10,7 @@ and flush the instance using flushdb.
 import uuid
 import redis
 from typing import Union, Callable
+from functools import wraps
 
 
 class Cache:
@@ -20,6 +21,18 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @staticmethod
+    def count_calls(method: Callable) -> Callable:
+        key = method.__qualname__
+
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            self._redis.incr(key)
+            return method(self, *args, **kwargs)
+
+        return wrapper
+
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """generate a random key"""
         key = str(uuid.uuid4())
